@@ -1,0 +1,4 @@
+VIDEO_STREAM_URL = "http://..."  # Replace with your video stream URL
+DIRECTORY = "..."  # Where to download the videos
+LOGIN = "admin"  # Replace with your login
+PASSWORD = ""  # Replace with your password
