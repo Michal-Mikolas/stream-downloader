@@ -1,6 +1,7 @@
 import requests, datetime, time, os, subprocess
 from requests.auth import HTTPBasicAuth
 from tools import Tools
+from pathlib import Path
 
 tools = Tools()
 
@@ -24,32 +25,33 @@ def convert_mjpeg_to_mp4(input_filename, output_filename):
         Tools.log(' '.join(command))
 
         # Execute the ffmpeg command
-        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        Tools.log(f"Conversion successful: {input_filename} -> {output_filename}")
+        a = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     except Exception as e:
         Tools.log(f"Error during conversion: ")
         Tools.log(e)
 
-def delete_old_videos(directory, days=14):
+def delete_old_files(directory, exts, hours=14*24):
     """
-    Deletes MP4 files older than a specified number of days from the given directory.
+    Deletes files older than a specified number of hours from the given directory.
 
     Args:
     - directory (str): The path to the directory containing MP4 files.
-    - days (int): The age threshold in days for deleting files. Files older than this will be deleted.
+    - exts (list): Extensions of files which should be deleted.
+    - hours (int): The age threshold in hours for deleting files. Files older than this will be deleted.
     """
     # Get the current time
     now = datetime.datetime.now()
     # Calculate the threshold time
-    cutoff = now - datetime.timedelta(days=days)
+    cutoff = now - datetime.timedelta(hours=hours)
 
     # Iterate over all files in the directory
     for filename in os.listdir(directory):
         # Construct the full path to the file
         file_path = os.path.join(directory, filename)
+        ext = Path(filename).suffix.lstrip('.')
         # Check if the file is an MP4 file
-        if filename.endswith('.mp4') or filename.endswith('.mkv') or filename.endswith('.mjpeg'):
+        if ext in exts:
             # Get the file's modification time
             file_mod_time = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
             # Check if the file is older than the cutoff time
@@ -58,7 +60,7 @@ def delete_old_videos(directory, days=14):
                 os.remove(file_path)
                 print(f"Deleted: {file_path}")
 
-def download_stream(url:str, directory:str, login:str, password:str, duration=3600):
+def download_stream(url:str, directory:str, login:str, password:str, duration=60):
     """
     Downloads MJPEG video stream with HTTP Basic Authentication and saves it into hourly segments.
 
@@ -77,7 +79,7 @@ def download_stream(url:str, directory:str, login:str, password:str, duration=36
         # Generate the filename based on the current date and time
         filename = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         print('')
-        Tools.log(f"Starting to download stream to {directory}/{filename}.jmpeg")
+        Tools.log(f"Starting to download stream to {directory}/{filename}.mjpeg")
 
         # Open the stream with authentication
         with requests.get(url, auth=auth, stream=True) as r:
@@ -94,15 +96,12 @@ def download_stream(url:str, directory:str, login:str, password:str, duration=36
                     if chunk:
                         f.write(chunk)
 
-        # # Wait a short period before starting the next download cycle
-        # time.sleep(1)
-
         # Convert mjpeg to mp4
         convert_mjpeg_to_mp4(f"{directory}/{filename}.mjpeg", f"{directory}/{filename}.mp4")
-        os.unlink(f"{directory}/{filename}.mjpeg")
 
         # Delete old recordings
-        delete_old_videos(directory)
+        delete_old_files(directory, ['mp4', 'mkv', 'avi'], hours=14*24)
+        delete_old_files(directory, ['mjpeg'], hours=2)  # delete mjpeg videos after the conversion to mp4
 
 if __name__ == "__main__":
     import config
