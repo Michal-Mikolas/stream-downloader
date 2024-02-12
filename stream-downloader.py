@@ -60,7 +60,7 @@ def delete_old_files(directory, exts, hours=14*24):
                 os.remove(file_path)
                 print(f"Deleted: {file_path}")
 
-def download_stream(url:str, directory:str, login:str, password:str, duration=60):
+def download_stream(url:str, directory:str, login:str, password:str, duration=3600):
     """
     Downloads MJPEG video stream with HTTP Basic Authentication and saves it into hourly segments.
 
